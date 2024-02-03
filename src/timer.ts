@@ -269,8 +269,6 @@ export class Timer {
 		}
 	}
 
-
-
 	/**************  Logging  **************/
 	async logPomo(comment: string): Promise<void> {
 		const dailyNoteFilePath = (await getDailyNoteFile()).path;
@@ -287,9 +285,10 @@ export class Timer {
 		} else {
 			values = property.content
 		}
+		const duration = moment.duration(this.endTime.diff(this.startTime)).asMinutes()
 	  const newValues = {
 			date: this.startTime.format('YYYY-MM-DD HH:mm:ss'),
-			duration: moment.duration(this.endTime.diff(this.startTime)).asMinutes(),
+			duration: Math.round(duration * 10) / 10,
 			link: this.plugin.app.fileManager.generateMarkdownLink(this.activeNote, ''),
 			comment: comment,
 		}
