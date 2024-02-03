@@ -17,10 +17,6 @@ export interface PomoSettings {
 	useSystemNotification: boolean;
 	backgroundNoiseFile: string;
 	logging: boolean;
-	logFile: string;
-	logText: string;
-	logToDaily: boolean;
-	logActiveNote: boolean;
 	fancyStatusBar: boolean;
 	whiteNoise: boolean;
 }
@@ -41,7 +37,6 @@ export const DEFAULT_SETTINGS: PomoSettings = {
 	logFile: "Pomodoro Log.md",
 	logToDaily: false,
 	logText: "[🍅] dddd, MMMM DD YYYY, h:mm A",
-	logActiveNote: false,
 	fancyStatusBar: false,
 	whiteNoise: false,
 }
@@ -215,58 +210,6 @@ export class PomoSettingTab extends PluginSettingTab {
 						this.plugin.saveSettings();
 						this.display(); //force refresh
 					}));
-
-		//various logging settings; only show if logging is enabled (currently does not autohide, only)
-		if (this.plugin.settings.logging === true) {
-
-			new Setting(containerEl)
-				.setName("Log file")
-				.setDesc("If file doesn't already exist, it will be created")
-				.addText(text => text
-					.setValue(this.plugin.settings.logFile.toString())
-					.onChange(value => {
-						this.plugin.settings.logFile = value;
-						this.plugin.saveSettings();
-					}));
-
-			new Setting(containerEl)
-				.setName("Log to daily note")
-				.setDesc("Logs to the end of today's daily note")
-				.addToggle(toggle => toggle
-					.setValue(this.plugin.settings.logToDaily)
-					.onChange(value => {
-						if (appHasDailyNotesPluginLoaded() === true) {
-							this.plugin.settings.logToDaily = value;
-						} else if (value === true) {
-							this.plugin.settings.logToDaily = false;
-							new Notice("Please enable daily notes plugin");
-						}
-						this.plugin.saveSettings();
-
-					}));
-	
-
-			new Setting(containerEl)
-				.setName("Timestamp Format")
-				.setDesc("Specify format for the logtext using moment syntax")
-				.addMomentFormat(text => text
-					.setDefaultFormat(this.plugin.settings.logText)
-					.setValue(this.plugin.settings.logText)
-					.onChange(value => {
-						this.plugin.settings.logText = value;
-						this.plugin.saveSettings();
-					}));
-
-			new Setting(containerEl)
-			.setName("Log active note")
-			.setDesc("In log, append link pointing to the note that was active when you started the pomodoro")
-			.addToggle(toggle => toggle
-					.setValue(this.plugin.settings.logActiveNote)
-					.onChange(value => {
-						this.plugin.settings.logActiveNote = value;
-						this.plugin.saveSettings();
-					}));
-		}
 	}
 }
 

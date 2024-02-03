@@ -18,10 +18,12 @@ export const enum Mode {
 
 
 export class Timer {
+	metaEdit: any;
 	plugin: PomoTimerPlugin;
 	settings: PomoSettings;
 	startTime: moment.Moment; /*when currently running timer started*/
 	endTime: moment.Moment;   /*when currently running timer will end if not paused*/
+	restarted: boolean; /*if true, timer is restarted after a pause*/
 	mode: Mode;
 	pausedTime: number;  /*time left on paused timer, in milliseconds*/
 	paused: boolean;
@@ -30,14 +32,16 @@ export class Timer {
 	cyclesSinceLastAutoStop: number;
 	activeNote: TFile;
 	whiteNoisePlayer: WhiteNoise;
-
+	
 	constructor(plugin: PomoTimerPlugin) {
+		this.metaEdit = plugin.app.plugins.plugins['metaedit'].api
 		this.plugin = plugin;
 		this.settings = plugin.settings;
 		this.mode = Mode.NoTimer;
 		this.paused = false;
 		this.pomosSinceStart = 0;
 		this.cyclesSinceLastAutoStop = 0;
+		this.restarted = false;
 
 		if (this.settings.whiteNoise === true) {
 			this.whiteNoisePlayer = new WhiteNoise(plugin, whiteNoiseUrl);
@@ -81,7 +85,7 @@ export class Timer {
 			this.pomosSinceStart += 1;
 
 			if (this.settings.logging === true) {
-				await this.logPomo();
+				await this.logPomo(this.restarted ? '(resumed)' : '');
 			}
 		} else if (this.mode === Mode.ShortBreak || this.mode === Mode.LongBreak) {
 			this.cyclesSinceLastAutoStop += 1;
@@ -129,18 +133,22 @@ export class Timer {
 		}
 	}
 
-	togglePause() {
+	async togglePause() {
 		if (this.paused === true) {
 			this.restartTimer();
 		} else if (this.mode !== Mode.NoTimer) { //if some timer running
 			this.pauseTimer();
+			this.endTime = moment();
+			if (this.settings.logging === true && this.mode === Mode.Pomo) {
+				await this.logPomo('(paused)');
+			}
 			new Notice("Timer paused.")
 		}
 	}
 
 	restartTimer(): void {
-		if (this.settings.logActiveNote === true && this.autoPaused === true) {
-			this.setLogFile();
+		if (this.autoPaused === true) {
+			// this.setLogFile();
 			this.autoPaused = false;
 		}
 
@@ -151,21 +159,21 @@ export class Timer {
 		if (this.settings.whiteNoise === true) {
 			this.whiteNoisePlayer.whiteNoise();
 		}
+		this.restarted = true;
 	}
 
 	startTimer(mode: Mode = null): void {
-		this.setupTimer(mode);
-		this.paused = false; //do I need this?
-
-		if (this.settings.logActiveNote === true) {
+		if (this.mode == Mode.NoTimer) {
 			this.setLogFile()
 		}
-
+		this.setupTimer(mode);
+		this.paused = false; //do I need this?
 		this.modeStartingNotification();
 
 		if (this.settings.whiteNoise === true) {
 			this.whiteNoisePlayer.whiteNoise();
 		}
+		this.restarted = false;
 	}
 
 	private setupTimer(mode: Mode = null) {
@@ -232,7 +240,7 @@ export class Timer {
 
 		switch (this.mode) {
 			case (Mode.Pomo): {
-				new Notice(`Starting ${time} ${unit} pomodoro.`);
+				new Notice(`Starte ${time} ${unit} pomodoro.`);
 				break;
 			}
 			case (Mode.ShortBreak):
@@ -264,43 +272,29 @@ export class Timer {
 
 
 	/**************  Logging  **************/
-	async logPomo(): Promise<void> {
-		var logText = moment().format(this.settings.logText);
-		const logFilePlaceholder = "{{logFile}}";
+	async logPomo(comment: string): Promise<void> {
+		const dailyNoteFilePath = (await getDailyNoteFile()).path;
+		
+		const properties = await this.metaEdit.getPropertiesInFile(dailyNoteFilePath);
+		const targetProp = 'pomodoros';
 
-		if (this.settings.logActiveNote === true) {
-			let linkText = this.plugin.app.fileManager.generateMarkdownLink(this.activeNote, '');
-			if (logText.includes(logFilePlaceholder)) {
-				logText = logText.replace(logFilePlaceholder, linkText);
-			} else {
-				logText = logText + " " + linkText;
-			}
-
-			logText = logText.replace(String.raw`\n`, "\n");
+		let values
+		let property = properties.find(prop => prop.key === targetProp);
+		if (property === undefined) {
+			console.log('creating new property')
+			await this.metaEdit.createYamlProperty(targetProp, '[]', dailyNoteFilePath)
+			values = []
+		} else {
+			values = property.content
 		}
-
-		if (this.settings.logToDaily === true) { //use today's note
-			let file = (await getDailyNoteFile()).path;
-			await this.appendFile(file, logText);
-		} else { //use file given in settings
-			let file = this.plugin.app.vault.getAbstractFileByPath(this.settings.logFile);
-
-			if (!file || file !instanceof TFolder) { //if no file, create
-				console.log("Creating pomodoro log file");
-				await this.plugin.app.vault.create(this.settings.logFile, "");
-			}
-
-			await this.appendFile(this.settings.logFile, logText);
+	  const newValues = {
+			date: this.startTime.format('YYYY-MM-DD HH:mm:ss'),
+			duration: moment.duration(this.endTime.diff(this.startTime)).asMinutes(),
+			link: this.plugin.app.fileManager.generateMarkdownLink(this.activeNote, ''),
+			comment: comment,
 		}
-	}
-
-	//from Note Refactor plugin by James Lynch, https://github.com/lynchjames/note-refactor-obsidian/blob/80c1a23a1352b5d22c70f1b1d915b4e0a1b2b33f/src/obsidian-file.ts#L69
-	async appendFile(filePath: string, logText: string): Promise<void> {
-		let existingContent = await this.plugin.app.vault.adapter.read(filePath);
-		if (existingContent.length > 0) {
-			existingContent = existingContent + '\r';
-		}
-		await this.plugin.app.vault.adapter.write(filePath, existingContent + logText);
+		values.push(newValues)
+		await this.metaEdit.update(targetProp, values, dailyNoteFilePath)
 	}
 
 	setLogFile(){

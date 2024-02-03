@@ -37,9 +37,9 @@ export default class PomoTimerPlugin extends Plugin {
 			this.statusBar.setText(await this.timer.setStatusBarText()), 500));
 
 		this.addCommand({
-			id: 'start-satusbar-pomo',
+			id: 'start-statusbar-pomo',
 			name: 'Start pomodoro',
-			icon: 'play',
+			icon: 'play-circle',
 			checkCallback: (checking: boolean) => {
 				let leaf = this.app.workspace.activeLeaf;
 				if (leaf) {
@@ -53,9 +53,9 @@ export default class PomoTimerPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: 'pause-satusbar-pomo',
+			id: 'pause-statusbar-pomo',
 			name: 'Toggle timer pause',
-			icon: 'pause',
+			icon: 'pause-circle',
 			checkCallback: (checking: boolean) => {
 				let leaf = this.app.workspace.activeLeaf;
 				if (leaf && this.timer.mode !== Mode.NoTimer) {
@@ -69,9 +69,9 @@ export default class PomoTimerPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: 'quit-satusbar-pomo',
+			id: 'quit-statusbar-pomo',
 			name: 'Quit timer',
-			icon: 'quit',
+			icon: 'stop-circle',
 			checkCallback: (checking: boolean) => {
 				let leaf = this.app.workspace.activeLeaf;
 				if (leaf && this.timer.mode !== Mode.NoTimer) {
