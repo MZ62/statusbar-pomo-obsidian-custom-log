@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-statusbar-pomo",
-	"name": "Status Bar Pomodoro Timer",
-	"version": "0.1.14",
-	"minAppVersion": "0.9.12",
-	"description": "Adds a pomodoro timer to your status bar.",
-	"author": "kzhovn",
-	"authorUrl": "",
-	"isDesktopOnly": true
+  "id": "obsidian-statusbar-pomo-mz",
+  "name": "Status Bar Pomodoro Timer (mz)",
+  "version": "0.1.14",
+  "minAppVersion": "0.9.12",
+  "description": "Adds a pomodoro timer to your status bar. Forked from kzhovn/obsidian-statusbar-pomo. Modified by mz to log pomodoros to current daily note.",
+  "author": "kzhovn",
+  "authorUrl": "",
+  "isDesktopOnly": true
 }
